@@ -1,0 +1,68 @@
+{
+  "users": [
+    {
+      "name": "guest",
+      "password": "guest",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "guest",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "acoustic.frames",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "q.frames",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "q.heartbeats",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "acoustic.frames",
+      "vhost": "/",
+      "destination": "q.frames",
+      "destination_type": "queue",
+      "routing_key": "sensor.anomaly.*",
+      "arguments": {}
+    },
+    {
+      "source": "acoustic.frames",
+      "vhost": "/",
+      "destination": "q.heartbeats",
+      "destination_type": "queue",
+      "routing_key": "sensor.telemetry.*",
+      "arguments": {}
+    }
+  ]
+}

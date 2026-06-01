@@ -9,7 +9,9 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - rmq_data:/var/lib/rabbitmq
+      - rmq_dev_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 5s
@@ -24,13 +26,12 @@ services:
     restart: unless-stopped
     environment:
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
-      - HUB_URL=http://java-hub:8080/api/v1 # Artem, vstav siudy svoiu urlu
       - DEVICE_ID=node-001
-      - LOOP_INTERVAL_SECS=5
+      - LOOP_INTERVAL_SECS=1
       - RUST_LOG=info
     depends_on:
       rabbitmq:
         condition: service_healthy
 
 volumes:
-  rmq_data:
+  rmq_dev_data:
