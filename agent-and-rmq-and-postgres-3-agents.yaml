@@ -1,0 +1,98 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: acoustic_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: acoustic_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: acousticguard 
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  edge-agent-1:
+    build:
+      context: ../edge-agent
+      dockerfile: Dockerfile
+    container_name: acoustic_edge_agent_1
+    restart: unless-stopped
+    environment:
+      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
+      - HUB_URL=http://host.docker.internal:8080/api/v1 
+      - DEVICE_ID=node-001
+      - SENSOR_ID=node-001
+      - LATITUDE=50.4501
+      - LONGITUDE=30.5234
+      - AUDIO_FILE_PATH=assets/cld_uav.wav
+      - LOOP_INTERVAL_SECS=5
+      - RUST_LOG=info
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  edge-agent-2:
+    build:
+      context: ../edge-agent
+      dockerfile: Dockerfile
+    container_name: acoustic_edge_agent_2
+    restart: unless-stopped
+    environment:
+      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
+      - HUB_URL=http://host.docker.internal:8080/api/v1 
+      - DEVICE_ID=node-002
+      - SENSOR_ID=node-002
+      - LATITUDE=50.4515
+      - LONGITUDE=30.5245
+      - AUDIO_FILE_PATH=assets/gmn_explosion.wav
+      - LOOP_INTERVAL_SECS=5
+      - RUST_LOG=info
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  edge-agent-3:
+    build:
+      context: ../edge-agent
+      dockerfile: Dockerfile
+    container_name: acoustic_edge_agent_3
+    restart: unless-stopped
+    environment:
+      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
+      - HUB_URL=http://host.docker.internal:8080/api/v1 
+      - DEVICE_ID=node-003
+      - SENSOR_ID=node-003
+      - LATITUDE=50.4900
+      - LONGITUDE=30.4500
+      - AUDIO_FILE_PATH=assets/mock_test.wav
+      - LOOP_INTERVAL_SECS=5
+      - RUST_LOG=info
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  rmq_data:
+  pg_data:
