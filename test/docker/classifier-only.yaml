@@ -7,10 +7,11 @@ services:
     restart: unless-stopped
     ports:
       - "3232:3232"
+    volumes:
+      - ../../../classifier/models:/app/models
     environment:
       - CLASSIFIER_PORT=3232
       - LOG_LEVEL=INFO
       - EXPLOSION_THRESHOLD_DB=-10.0
-      - UAV_THRESHOLD_DB=-30.0
-      - UAV_FREQ_MULTIPLIER=1.5
-      - MODEL_VERSION=heuristic-v1.1
+      - MODEL_PATH=models/random_forest_v1.joblib
+      - MODEL_VERSION=rf-v1.0
