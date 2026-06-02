@@ -1,0 +1,130 @@
+services:
+  # 1. Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: acoustic_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Database with PostGIS
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: acoustic_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: acousticguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Python gRPC Classifier
+  classifier:
+    build:
+      context: ../classifier
+      dockerfile: Dockerfile
+    container_name: acoustic_classifier
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+    environment:
+      - CLASSIFIER_PORT=50051
+      - LOG_LEVEL=INFO
+      - EXPLOSION_THRESHOLD_DB=-10.0
+      - UAV_THRESHOLD_DB=-30.0
+      - UAV_FREQ_MULTIPLIER=1.5
+      - MODEL_VERSION=heuristic-v1.1
+
+  # 4. Java Spring Boot Hub
+  java-hub:
+    build:
+      context: ../hub            
+      dockerfile: Dockerfile     
+    container_name: acoustic_java_hub
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Перевизначаємо localhost на внутрішні Docker-адреси
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/acousticguard
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      # Spring Boot Relaxed Binding для grpc.client.channels.python-classifier.address
+      - SPRING_GRPC_CLIENT_CHANNELS_PYTHON_CLASSIFIER_ADDRESS=static://classifier:50051
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      classifier:
+        condition: service_started
+
+  # 5. Edge Agents (Тестові ноди)
+  edge-agent-1:
+    build:
+      context: ../edge-agent
+    container_name: acoustic_edge_agent_1
+    restart: unless-stopped
+    environment:
+      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
+      - DEVICE_ID=node-001
+      - LATITUDE=50.4501
+      - LONGITUDE=30.5234
+      - AUDIO_FILE_PATH=assets/cld_uav.wav
+      - LOOP_INTERVAL_SECS=5
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  edge-agent-2:
+    build:
+      context: ../edge-agent
+    container_name: acoustic_edge_agent_2
+    restart: unless-stopped
+    environment:
+      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
+      - DEVICE_ID=node-002
+      - LATITUDE=50.4515
+      - LONGITUDE=30.5245
+      - AUDIO_FILE_PATH=assets/gmn_explosion.wav
+      - LOOP_INTERVAL_SECS=5
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  edge-agent-3:
+    build:
+      context: ../edge-agent
+    container_name: acoustic_edge_agent_3
+    restart: unless-stopped
+    environment:
+      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
+      - DEVICE_ID=node-003
+      - LATITUDE=50.4900
+      - LONGITUDE=30.4500
+      - AUDIO_FILE_PATH=assets/mock_test.wav
+      - LOOP_INTERVAL_SECS=5
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  rmq_data:
+  pg_data:
