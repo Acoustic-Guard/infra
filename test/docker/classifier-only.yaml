@@ -12,6 +12,6 @@ services:
     environment:
       - CLASSIFIER_PORT=3232
       - LOG_LEVEL=INFO
-      - EXPLOSION_THRESHOLD_DB=-10.0
       - MODEL_PATH=models/random_forest_v1.joblib
-      - MODEL_VERSION=rf-v1.0
+      - YAMNET_MODEL_PATH=models/yamnet.tflite
+      - MODEL_VERSION=hybrid-stateless-v1.0
