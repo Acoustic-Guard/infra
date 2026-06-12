@@ -1,7 +1,7 @@
 services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: guard_rabbitmq_dev
+    container_name: acoustic_rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -10,6 +10,13 @@ services:
       - "15672:15672"
     volumes:
       - rmq_dev_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   rmq_dev_data:
