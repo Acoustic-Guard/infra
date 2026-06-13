@@ -51,8 +51,11 @@ services:
       - LOG_LEVEL=INFO
       - EXPLOSION_THRESHOLD_DB=-25.0
       - MODEL_PATH=models/random_forest_v1.joblib
-      - YAMNET_EXPLOSION_CONFIDENCE=0.15
-      - YAMNET_UAV_CONFIDENCE=0.15
+      - YAMNET_EXPLOSION_CONFIDENCE=0.20
+      - YAMNET_UAV_CONFIDENCE=0.35
+      - YAMNET_SIREN_CONFIDENCE=0.10
+      - YAMNET_TRUCK_CONFIDENCE=0.30
+      - YAMNET_GENERATOR_CONFIDENCE=0.20
 
   # 4. Java Spring Boot Hub
   java-hub:
@@ -76,321 +79,211 @@ services:
       classifier:
         condition: service_started
 
-  # 5. Edge Agents - Фонові сенсори (Еко-карта)
+  # ==========================================
+  # EDGE AGENTS - BACKGROUND NOISE (Scattered)
+  # ==========================================
   edge-agent-1:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_1
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-001
-      - LATITUDE=50.3700
-      - LONGITUDE=30.6500
+      - LATITUDE=50.4350 # Near Darnytsia Railway Station
+      - LONGITUDE=30.6400
       - AUDIO_SOURCE=FILE
       - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - ANOMALY_THRESHOLD_DB=-20.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-2:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_2
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-002
-      - LATITUDE=50.3800
-      - LONGITUDE=30.6700
+      - LATITUDE=50.3600 # Osokorky South
+      - LONGITUDE=30.6200
       - AUDIO_SOURCE=FILE
       - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - ANOMALY_THRESHOLD_DB=-20.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-3:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_3
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-003
-      - LATITUDE=50.3950
-      - LONGITUDE=30.6600
+      - LATITUDE=50.4700 # Lisnyi Masyv (Residential)
+      - LONGITUDE=30.6350
       - AUDIO_SOURCE=FILE
       - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - ANOMALY_THRESHOLD_DB=-20.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
+  # ==========================================
+  # EDGE AGENTS - POZNIAKY (Explosions & UAVs)
+  # ==========================================
   edge-agent-4:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_4
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-004
-      - LATITUDE=50.4050
-      - LONGITUDE=30.6800
+      - LATITUDE=50.4020 # Pozniaky
+      - LONGITUDE=30.6400
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/exp-001.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-5:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_5
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-005
-      - LATITUDE=50.4150
-      - LONGITUDE=30.6500
+      - LATITUDE=50.3950 # Pozniaky South
+      - LONGITUDE=30.6300
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/exp-001.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-6:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_6
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-006
-      - LATITUDE=50.4250
-      - LONGITUDE=30.6900
+      - LATITUDE=50.3980 # Pozniaky
+      - LONGITUDE=30.6450
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/uav.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-7:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_7
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-007
-      - LATITUDE=50.4350
-      - LONGITUDE=30.6600
+      - LATITUDE=50.4080 # Pozniaky North
+      - LONGITUDE=30.6350
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/uav.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
+  # ==========================================
+  # EDGE AGENTS - REMBAZA (Trucks)
+  # ==========================================
   edge-agent-8:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_8
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-008
-      - LATITUDE=50.4450
+      - LATITUDE=50.4250 # Rembaza (Boryspilska St area)
       - LONGITUDE=30.6800
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/horn.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-9:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_9
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-009
-      - LATITUDE=50.3750
-      - LONGITUDE=30.7000
+      - LATITUDE=50.4280 # Rembaza (Zroshuvalna St area)
+      - LONGITUDE=30.6900
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/horn.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
+  # ==========================================
+  # EDGE AGENTS - BORTNYCHI & NYZHNI SADY (Sirens & Generators)
+  # ==========================================
   edge-agent-10:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_10
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-010
-      - LATITUDE=50.3900
-      - LONGITUDE=30.7200
+      - LATITUDE=50.3600 # Bortnychi (South)
+      - LONGITUDE=30.6850
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/siren.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-11:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_11
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-011
-      - LATITUDE=50.4100
-      - LONGITUDE=30.7500
+      - LATITUDE=50.3800 # Bortnychi (North)
+      - LONGITUDE=30.6950
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/siren.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
   edge-agent-12:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_12
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-012
-      - LATITUDE=50.4400
-      - LONGITUDE=30.7600
+      - LATITUDE=50.3400 # Nyzhni Sady
+      - LONGITUDE=30.6100
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/wind-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/generator.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
-  # 6. Edge Agents - Загрози (Інциденти)
   edge-agent-13:
     build: { context: ../edge-agent }
     container_name: acoustic_edge_agent_13
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-013
-      - LATITUDE=50.3980
-      - LONGITUDE=30.6450
+      - LATITUDE=50.3450 # Nyzhni Sady
+      - LONGITUDE=30.6150
       - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/exp-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
+      - AUDIO_FILE_PATH=assets/processed/generator.wav
+      - ANOMALY_THRESHOLD_DB=-55.0
       - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
-    depends_on: { rabbitmq: { condition: service_healthy } }
-
-  edge-agent-14:
-    build: { context: ../edge-agent }
-    container_name: acoustic_edge_agent_14
-    restart: unless-stopped
-    environment:
-      - RUST_LOG=info
-      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
-      - DEVICE_ID=node-014
-      - LATITUDE=50.4020
-      - LONGITUDE=30.6500
-      - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/exp-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
-      - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
-    depends_on: { rabbitmq: { condition: service_healthy } }
-
-  edge-agent-15:
-    build: { context: ../edge-agent }
-    container_name: acoustic_edge_agent_15
-    restart: unless-stopped
-    environment:
-      - RUST_LOG=info
-      - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
-      - DEVICE_ID=node-015
-      - LATITUDE=50.4150
-      - LONGITUDE=30.6650
-      - AUDIO_SOURCE=FILE
-      - AUDIO_FILE_PATH=assets/processed/exp-001.wav
-      - DEFAULT_SAMPLE_RATE=44100
-      - ANOMALY_THRESHOLD_DB=-30.0
-      - COOLDOWN_DURATION_SECS=3
-      - TELEMETRY_INTERVAL_SECS=20
-      - FFT_BINS_COUNT=100
-      - RMQ_MAX_RETRIES=5
-      - RMQ_RETRY_DELAY_SECS=3
     depends_on: { rabbitmq: { condition: service_healthy } }
 
 volumes:
