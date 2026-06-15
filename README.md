@@ -1,304 +1,127 @@
-# Acoustic Guard - Infrastructure
+# 🔊 Acoustic Guard — Infrastructure Hub
 
-Acoustic Guard is a distributed acoustic monitoring platform for real-time threat detection (UAV, explosions, sirens, generators, trucks) using edge agents, AI classification, and a central hub.
+> Complete Docker Compose infrastructure for the **Acoustic Guard** distributed urban acoustic monitoring system — provisioning core backend services, ML classifiers, messaging brokers, and edge agents for both simulation and live testing.
 
-## Architecture Overview
+---
 
-The system consists of 4 main microservices:
+## 📐 Architecture Overview
 
-1. **edge-agent (Rust)**: Audio capture from file/microphone, FFT processing, AMQP publishing to RabbitMQ
-2. **classifier (Python)**: gRPC server running YAMNet/TensorFlow Lite for threat classification
-3. **hub (Java/Spring Boot)**: Central orchestrator, RabbitMQ consumer, PostGIS persistence, WebSocket broadcaster
-4. **frontend (React/Leaflet)**: Real-time map dashboard with analytics
+The infrastructure is divided into two logical blocks: **Core Services** and the **Edge Network**.
 
-### Data Flow
+### Core Services
 
-```
-edge-agent (Rust) → RabbitMQ → hub (Java) → gRPC → classifier (Python)
-                                    ↓
-                              PostGIS DB
-                                    ↓
-                              WebSocket → frontend (React)
-```
+| Service | Stack | Role |
+|---|---|---|
+| `rabbitmq` | RabbitMQ 3 | AMQP message broker for high-throughput audio event streams |
+| `postgres` | PostgreSQL 15 + PostGIS | Spatial database for alerts, incidents, sensors, telemetry |
+| `classifier` | Python + YAMNet + Random Forest | gRPC server with dual ML pipeline for threat classification |
+| `java-hub` | Java + Spring Boot | Central orchestrator — REST API, WebSocket broadcaster, DB persistence |
 
-## Prerequisites
+**Classified threat types:** UAV · Explosion · Siren · Truck · Generator
 
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- 8GB RAM minimum
-- 20GB disk space
+---
 
-## Environment Variables Configuration
+## 🚀 Modes of Operation
 
-### Docker Compose Environment Variables
+The system supports two distinct ways to run the infrastructure.
 
-The system uses environment variables configured in `docker-compose.yaml`:
+---
 
-#### Classifier Service
-- `CLASSIFIER_PORT=50051` - gRPC server port
-- `LOG_LEVEL=INFO` - Logging level
-- `EXPLOSION_THRESHOLD_DB=-25.0` - Explosion detection threshold (unused in current implementation)
-- `MODEL_PATH=models/random_forest_v1.joblib` - Random Forest model path
-- `YAMNET_EXPLOSION_CONFIDENCE=0.20` - YAMNet confidence threshold for explosions
-- `YAMNET_UAV_CONFIDENCE=0.35` - YAMNet confidence threshold for UAV
-- `YAMNET_SIREN_CONFIDENCE=0.10` - YAMNet confidence threshold for sirens
-- `YAMNET_TRUCK_CONFIDENCE=0.30` - YAMNet confidence threshold for trucks
-- `YAMNET_GENERATOR_CONFIDENCE=0.20` - YAMNet confidence threshold for generators
+### 🎮 Mode 1 — Full Simulation *(default, out-of-the-box)*
 
-#### Java Hub Service
-- `SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/acousticguard` - PostgreSQL connection string
-- `SPRING_RABBITMQ_HOST=rabbitmq` - RabbitMQ host
-- `SPRING_RABBITMQ_PORT=5672` - RabbitMQ port
-- `SPRING_GRPC_CLIENT_CHANNELS_PYTHON_CLASSIFIER_ADDRESS=static://classifier:50051` - gRPC classifier address
-- `SENSOR_HEARTBEAT_TIMEOUT_SECS=60` - Sensor heartbeat timeout in seconds (default: 60)
+Spins up the entire backend along with **13 virtual edge agents** streaming pre-recorded anomalies (explosions, sirens, UAVs) across different geographic zones.
 
-#### Edge Agent Services
-- `RUST_LOG=info` - Rust logging level
-- `AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f` - RabbitMQ connection URI
-- `DEVICE_ID=node-XXX` - Unique sensor identifier
-- `LATITUDE=50.XXXX` - Sensor latitude (Kyiv coordinates)
-- `LONGITUDE=30.XXXX` - Sensor longitude (Kyiv coordinates)
-- `AUDIO_SOURCE=FILE` - Audio source mode (FILE or MIC)
-- `AUDIO_FILE_PATH=assets/processed/wind-001.wav` - Path to audio file (if FILE mode)
-- `ANOMALY_THRESHOLD_DB=-20.0` - Anomaly detection threshold in dB
-- `TELEMETRY_INTERVAL_SECS=20` - Telemetry reporting interval in seconds
-
-### Additional Configuration
-
-#### Java Hub (application.yml)
-Located in `hub/src/main/resources/application.yml`:
-- `acoustic.classifier.confidence-threshold=0.10` - Global confidence threshold for alert creation
-- `acoustic.sensor.heartbeat-timeout-seconds=${SENSOR_HEARTBEAT_TIMEOUT_SECS:60}` - Sensor heartbeat timeout (configurable via SENSOR_HEARTBEAT_TIMEOUT_SECS env var, default: 60)
-- `acoustic.incident.spatial-threshold-meters=500` - Spatial clustering threshold
-- `acoustic.incident.temporal-threshold-seconds=300` - Temporal clustering threshold
-- `jwt.secret` - JWT signing secret (configure via JWT_SECRET env var)
-
-## Quick Start
-
-### 1. Clone Repository
+**1. Start the cluster**
 
 ```bash
-git clone <repository-url>
-cd acoustic_guard/infra
+docker compose up -d --build
 ```
 
-### 2. Start All Services
+**2. Open the frontend**
+
+```
+http://localhost:5173
+```
+
+**3. Log in with the default admin credentials**
+
+```
+Username: admin
+Password: admin123
+```
+
+**4. Observe** — the dashboard populates with live simulated incidents, telemetry, and the noise heatmap in real time.
+
+---
+
+### 🎙️ Mode 2 — Live Microphone Testing
+
+Use this mode to test the ML classifier and backend using a **physical microphone** through a local Rust edge agent.
+
+#### Step 1 — Windows Audio Setup *(crucial for accurate classification)*
+
+To prevent OS-level audio processing from distorting ML input:
+
+1. Open **Sound Control Panel → Recording → Microphone Properties**
+2. **Enhancements tab** → check *"Disable all sound effects"* (disable any AI noise cancellation/suppression)
+3. **Advanced tab** → set Default Format to a clean sample rate without spatial audio
+
+#### Step 2 — Start Core Infrastructure
+
+This starts the Database, RabbitMQ, Classifier, and Hub — **without** the 13 simulated agents, so your microphone is the only data source:
 
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.live.yml up -d --build
 ```
 
-This starts:
-- RabbitMQ (ports 5672, 15672)
-- PostgreSQL with PostGIS (port 5432)
-- Python classifier (port 50051)
-- Java hub (port 8080)
-- 13 edge agents (simulated sensors across Kyiv)
-
-### 3. Verify Services
+#### Step 3 — Start the Local Edge Agent
 
 ```bash
-# Check RabbitMQ Management UI
-open http://localhost:15672
-# Username: guest, Password: guest
-
-# Check Java Hub Health
-curl http://localhost:8080/actuator/health
-
-# Check Swagger UI
-open http://localhost:8080/swagger-ui.html
+cd ../edge-agent
+cargo run
 ```
 
-### 4. Access Frontend
+> Ensure the edge agent is configured to use `AUDIO_SOURCE=MIC` rather than `FILE` mode.
 
-The React frontend should be accessible at:
-```
-http://localhost:3000
-```
+#### Step 4 — Test in Real Time
 
-Default credentials:
-- Admin: (configure via JWT)
-- User: (configure via JWT)
+Log into the frontend (`admin` / `admin123`), play a siren or generator sound from your phone near the microphone, and watch the system detect it live.
 
-## Service Details
+---
 
-### Edge Agents (13 simulated sensors)
+## 🛠 Prerequisites
 
-The system includes 13 edge agents positioned across Kyiv:
+| Requirement | Version | Notes |
+|---|---|---|
+| Docker | v24.0.0+ | Required for all modes |
+| Docker Compose | v2.20.0+ | Required for all modes |
+| Rust / Cargo | latest stable | **Mode 2 only** |
+| Free RAM | 4–8 GB | 17 containers run concurrently in Mode 1 |
 
-**Background Noise (Darnytsia, Osokorky, Lisnyi Masyv):**
-- node-001, node-002, node-003
-- Audio: wind-001.wav
-- Threshold: -20.0 dB
+---
 
-**Explosions & UAVs (Pozniaky):**
-- node-004, node-005, node-006, node-007
-- Audio: exp-001.wav, uav.wav
-- Threshold: -55.0 dB
+## 🔌 Exposed Ports
 
-**Trucks (Rembaza):**
-- node-008, node-009
-- Audio: horn.wav
-- Threshold: -55.0 dB
+| Service | Port | Description | Credentials |
+|---|---|---|---|
+| Java Hub (REST + WS) | `8080` | Main API & WebSocket endpoint | — |
+| PostgreSQL | `5432` | Direct database access | `postgres` / `password` |
+| RabbitMQ AMQP | `5672` | AMQP port for edge agents | `guest` / `guest` |
+| RabbitMQ UI | `15672` | Management web interface | `guest` / `guest` |
+| gRPC Classifier | `50051` | Direct ML inference endpoint | — |
 
-**Sirens & Generators (Bortnychi, Nyzhni Sady):**
-- node-010, node-011, node-012, node-013
-- Audio: siren.wav, generator.wav
-- Threshold: -55.0 dB
+---
 
-### Database Schema
+## 🧹 Maintenance & Cleanup
 
-PostgreSQL with PostGIS extension includes:
-- `alerts` - Real-time threat alerts
-- `incidents` - Spatial incident records with status lifecycle
-- `sensors` - Sensor registry with heartbeat tracking
-- `telemetry` - Noise level telemetry data
-
-### API Endpoints
-
-**REST API (Base URL: http://localhost:8080/api/v1):**
-- `GET /incidents` - Retrieve active incidents
-- `GET /incidents/{id}` - Get specific incident
-- `PATCH /incidents/{id}/status` - Update incident status
-- `GET /analytics` - Get analytics data
-- `GET /alerts` - Get alerts (admin only)
-- `POST /auth/login` - JWT authentication
-
-**WebSocket:**
-- `/topic/alerts` - Real-time alert broadcasts
-- `/topic/incidents` - Real-time incident updates
-- `/topic/sensors` - Sensor status changes
-
-**gRPC:**
-- `classifier.v1.AudioClassifier/Classify` - Audio classification (port 50051)
-
-## Live Deployment (docker-compose.live.yml)
-
-For production deployment with live microphone input:
+Stop all services gracefully:
 
 ```bash
-docker-compose -f docker-compose.live.yml up -d
+docker compose down
 ```
 
-This configuration:
-- Uses real microphone input instead of pre-recorded files
-- Adjusts anomaly thresholds for live environment
-- Enables production-grade logging
-
-## Troubleshooting
-
-### Services Not Starting
+Stop and **wipe all data** (destroys persistent volumes — database, logs, RabbitMQ queues):
 
 ```bash
-# Check logs
-docker-compose logs <service-name>
-
-# Restart specific service
-docker-compose restart <service-name>
-
-# Rebuild service
-docker-compose up -d --build <service-name>
+docker compose down -v
 ```
-
-### RabbitMQ Connection Issues
-
-```bash
-# Check RabbitMQ status
-docker-compose exec rabbitmq rabbitmq-diagnostics -q ping
-
-# View queues
-docker-compose exec rabbitmq rabbitmqadmin list queues
-```
-
-### Database Connection Issues
-
-```bash
-# Check PostgreSQL status
-docker-compose exec postgres pg_isready -U postgres
-
-# Connect to database
-docker-compose exec postgres psql -U postgres -d acousticguard
-```
-
-### Classifier Not Responding
-
-```bash
-# Check classifier logs
-docker-compose logs classifier
-
-# Test gRPC connection
-docker-compose exec java-hub curl classifier:50051
-```
-
-## Stopping Services
-
-```bash
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (deletes all data)
-docker-compose down -v
-```
-
-## Monitoring
-
-### RabbitMQ Management UI
-- URL: http://localhost:15672
-- Username: guest
-- Password: guest
-
-### PostgreSQL
-- Host: localhost
-- Port: 5432
-- Database: acousticguard
-- Username: postgres
-- Password: password
-
-### Logs
-
-```bash
-# View all logs
-docker-compose logs -f
-
-# View specific service logs
-docker-compose logs -f java-hub
-docker-compose logs -f classifier
-docker-compose logs -f edge-agent-1
-```
-
-## Development
-
-### Rebuild Specific Service
-
-```bash
-docker-compose up -d --build <service-name>
-```
-
-### Access Service Shell
-
-```bash
-# Java Hub
-docker-compose exec java-hub bash
-
-# Python Classifier
-docker-compose exec classifier bash
-
-# Edge Agent
-docker-compose exec edge-agent-1 sh
-```
-
-## Security Notes
-
-⚠️ **Production Deployment Required Changes:**
-
-1. Change default credentials (RabbitMQ, PostgreSQL, JWT secret)
-2. Enable HTTPS/TLS for all communications
-3. Configure firewall rules
-4. Implement secrets management (e.g., HashiCorp Vault)
-5. Enable authentication on RabbitMQ Management UI
-6. Configure CORS for frontend domain
-7. Implement rate limiting on API endpoints
-
-## Support
-
-For issues or questions, refer to the main project documentation or contact the development team.
