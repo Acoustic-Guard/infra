@@ -264,8 +264,8 @@ services:
       - RUST_LOG=info
       - AMQP_URI=amqp://guest:guest@rabbitmq:5672/%2f
       - DEVICE_ID=node-012
-      - LATITUDE=50.3400 # Nyzhni Sady
-      - LONGITUDE=30.6100
+      - LATITUDE=50.3543 # Nyzhni Sady
+      - LONGITUDE=30.6025
       - AUDIO_SOURCE=FILE
       - AUDIO_FILE_PATH=assets/processed/generator.wav
       - ANOMALY_THRESHOLD_DB=-55.0
