@@ -71,7 +71,7 @@ To prevent OS-level audio processing from distorting ML input:
 This starts the Database, RabbitMQ, Classifier, and Hub — **without** the 13 simulated agents, so your microphone is the only data source:
 
 ```bash
-docker compose -f docker-compose.live.yml up -d --build
+docker compose -f docker-compose.live.yaml up -d --build
 ```
 
 #### Step 3 — Start the Local Edge Agent

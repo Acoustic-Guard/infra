@@ -80,6 +80,21 @@ services:
       classifier:
         condition: service_started
 
+  # 5. Frontend
+  frontend:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8080
+    container_name: acoustic_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      java-hub:
+        condition: service_started
+
   # ==========================================
   # EDGE AGENTS - BACKGROUND NOISE (Scattered)
   # ==========================================

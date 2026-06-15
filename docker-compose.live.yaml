@@ -69,3 +69,17 @@ services:
         condition: service_healthy
       classifier:
         condition: service_started
+
+  frontend:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8080
+    container_name: acoustic_frontend_live
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      java-hub:
+        condition: service_started
