@@ -71,6 +71,7 @@ services:
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_GRPC_CLIENT_CHANNELS_PYTHON_CLASSIFIER_ADDRESS=static://classifier:50051
+      - SENSOR_HEARTBEAT_TIMEOUT_SECS=60
     depends_on:
       postgres:
         condition: service_healthy
